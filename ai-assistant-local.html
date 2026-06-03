@@ -1,0 +1,687 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<meta http-equiv="Cache-Control" content="no-store">
+<meta name="robots" content="noindex,nofollow">
+<title>ラウレアハレ AI業務アシスタント（ローカルAI版）</title>
+<style>
+:root{
+  --pri:#1a73e8; --pri-l:#e8f0fe; --pri-d:#1557b0;
+  --ok:#2e7d32; --ok-l:#e8f5e9; --ng:#c62828; --ng-l:#ffebee;
+  --warn-bg:#fff8e1; --warn-tx:#e65100;
+  --ai:#6a1b9a; --ai-l:#f3e5f5;
+  --g0:#f8f9fa; --g1:#f1f3f4; --g2:#e8eaed; --g3:#dadce0;
+  --g5:#9aa0a6; --g6:#80868b; --g7:#5f6368; --g9:#202124;
+  --r:12px; --sh:0 1px 6px rgba(0,0,0,.12);
+}
+*{box-sizing:border-box}
+html,body{margin:0;padding:0}
+body{font-family:-apple-system,BlinkMacSystemFont,"Hiragino Kaku Gothic ProN","Noto Sans JP",Meiryo,sans-serif;
+  background:var(--g0); color:var(--g9); font-size:15px; line-height:1.5; padding-bottom:72px;}
+button{font-family:inherit; cursor:pointer}
+input,select,textarea{font-family:inherit; font-size:15px}
+
+.hdr{position:sticky; top:0; z-index:50; background:linear-gradient(90deg,var(--pri),var(--ai));
+  color:#fff; padding:10px 14px; display:flex; align-items:center; gap:10px; box-shadow:var(--sh)}
+.hdr h1{font-size:17px; margin:0; font-weight:700; flex:1}
+.hdr .badge{font-size:11px; padding:3px 9px; border-radius:14px; white-space:nowrap; cursor:pointer}
+.hdr .badge.ok{background:rgba(46,125,50,.92)} .hdr .badge.err{background:rgba(198,40,40,.95)}
+.hdr .badge.wait{background:rgba(255,255,255,.22)}
+
+.scr{display:none; padding:14px; max-width:920px; margin:0 auto}
+.scr.on{display:block}
+.cd{background:#fff; border-radius:var(--r); box-shadow:var(--sh); padding:14px; margin-bottom:12px}
+
+.cat-h{font-size:13px; color:var(--g7); font-weight:700; margin:16px 4px 8px; display:flex; align-items:center; gap:6px}
+.cat-h:first-child{margin-top:4px}
+.dgrid{display:grid; grid-template-columns:repeat(auto-fill,minmax(150px,1fr)); gap:10px}
+.dcard{background:#fff; border:1px solid var(--g2); border-radius:12px; padding:14px 12px; cursor:pointer;
+  transition:.12s; display:flex; flex-direction:column; gap:6px; text-align:left}
+.dcard:hover{box-shadow:var(--sh); border-color:var(--ai); transform:translateY(-1px)}
+.dcard .ic{font-size:26px; line-height:1}
+.dcard .t{font-size:14px; font-weight:700}
+.dcard .s{font-size:11px; color:var(--g6); line-height:1.4}
+
+.resbar{display:flex; gap:8px; align-items:center; flex-wrap:wrap; background:var(--pri-l);
+  border:1px solid #cfe0fb; border-radius:10px; padding:10px 12px; margin-bottom:14px}
+.resbar label{font-size:12px; color:var(--pri-d); font-weight:700; white-space:nowrap}
+.resbar select{flex:1; min-width:160px; padding:8px 10px; border:1px solid var(--g3); border-radius:8px; background:#fff}
+.resbar .info{font-size:12px; color:var(--g7)}
+
+.fgrid{display:grid; grid-template-columns:repeat(auto-fit,minmax(180px,1fr)); gap:10px}
+.fld{display:flex; flex-direction:column; margin-bottom:10px}
+.fld.wide{grid-column:1/-1}
+.fld label{font-size:12px; color:var(--g7); margin-bottom:3px; font-weight:600}
+.fld input,.fld select,.fld textarea{padding:9px 10px; border:1px solid var(--g3); border-radius:8px; width:100%; background:#fff}
+.fld textarea{min-height:96px; resize:vertical; line-height:1.6}
+.fld .hint{font-size:11px; color:var(--g6); margin-top:3px}
+.memo textarea{min-height:120px; border-color:var(--ai); background:#fdfcff}
+
+.btn{padding:11px 16px; border:none; border-radius:10px; font-size:14px; font-weight:700; min-height:46px}
+.btn-pri{background:var(--pri); color:#fff} .btn-ok{background:var(--ok); color:#fff}
+.btn-ai{background:var(--ai); color:#fff}
+.btn-sec{background:#fff; color:var(--pri); border:1px solid var(--pri)}
+.btn-gray{background:var(--g2); color:var(--g7)} .btn-ng{background:#fff;color:var(--ng);border:1px solid var(--ng)}
+.btn:disabled{opacity:.5}
+.actions{display:flex; gap:8px; flex-wrap:wrap; margin-bottom:12px}
+.actions .grow{flex:1; min-width:120px}
+
+.out-wrap{margin-top:4px}
+#out{background:#fff; border:1px solid var(--g3); border-radius:10px; padding:16px;
+  white-space:pre-wrap; word-break:break-word; font-size:14px; line-height:1.85; min-height:120px;
+  font-family:-apple-system,BlinkMacSystemFont,"Hiragino Kaku Gothic ProN","Noto Sans JP",Meiryo,sans-serif; outline:none}
+#out:empty::before{content:"「AIで文章化」を押すと、ここに文書が生成されます（生成中は逐次表示）。"; color:var(--g5)}
+#out:focus{border-color:var(--ai)}
+#out.gen{border-color:var(--ai); background:#fdfcff}
+.out-note{font-size:11px; color:var(--g6); margin:6px 2px 0}
+.cursor::after{content:"▌"; color:var(--ai); animation:bl 1s steps(2) infinite}
+@keyframes bl{0%{opacity:1}50%{opacity:0}}
+
+.draft{background:#fff; border:1px solid var(--g2); border-radius:10px; padding:12px; margin-bottom:8px;
+  display:flex; gap:10px; align-items:center}
+.draft .meta{flex:1; min-width:0}
+.draft .meta .t{font-weight:700; font-size:14px; white-space:nowrap; overflow:hidden; text-overflow:ellipsis}
+.draft .meta .d{font-size:11px; color:var(--g6)}
+.draft .mini{padding:7px 10px; border-radius:8px; font-size:12px; min-height:36px; font-weight:700}
+
+.note{background:var(--warn-bg); color:var(--warn-tx); border-radius:10px; padding:11px 13px; font-size:12.5px; line-height:1.65; margin-bottom:12px}
+.note b{color:#bf360c}
+.note.ai{background:var(--ai-l); color:#4a148c}
+.note.ai b{color:#4a148c}
+.empty{text-align:center; color:var(--g5); padding:40px 10px}
+
+.bnav{position:fixed; bottom:0; left:0; right:0; background:#fff; border-top:1px solid var(--g2);
+  display:flex; z-index:50; box-shadow:0 -1px 6px rgba(0,0,0,.08)}
+.bnav button{flex:1; border:none; background:none; padding:8px 4px; font-size:11px; color:var(--g6);
+  display:flex; flex-direction:column; align-items:center; gap:2px; min-height:56px; justify-content:center}
+.bnav button.on{color:var(--ai)} .bnav button .ic{font-size:20px}
+
+#toast{position:fixed; bottom:80px; left:50%; transform:translateX(-50%) translateY(20px);
+  background:var(--g9); color:#fff; padding:10px 18px; border-radius:22px; font-size:14px; z-index:200;
+  opacity:0; transition:.25s; pointer-events:none; max-width:90%; text-align:center}
+#toast.on{opacity:1; transform:translateX(-50%) translateY(0)}
+
+.modal{position:fixed; inset:0; background:rgba(0,0,0,.45); z-index:150; display:none; align-items:center; justify-content:center; padding:16px}
+.modal.on{display:flex}
+.modal .box{background:#fff; border-radius:var(--r); max-width:560px; width:100%; max-height:88vh; overflow:auto; padding:18px}
+.modal h2{font-size:16px; margin:0 0 12px}
+.muted{color:var(--g6); font-size:12px}
+.kb{background:var(--g1); border:1px solid var(--g3); border-radius:5px; padding:1px 6px; font-family:monospace; font-size:12px}
+.rag-item{border:1px solid var(--g2); border-radius:8px; padding:8px 10px; margin-bottom:6px; display:flex; gap:8px; align-items:flex-start}
+.rag-item .ti{font-weight:700; font-size:13px}
+.rag-item .bd{font-size:11px; color:var(--g6); max-height:34px; overflow:hidden}
+
+@media print{
+  body{padding:0; background:#fff}
+  .hdr,.bnav,.resbar,.actions,#toast,.note,.editor-form,.editor-head,.modal{display:none !important}
+  .scr{padding:0; max-width:none} .scr:not(.on){display:none}
+  .out-wrap{margin:0} #out{border:none; padding:0; font-size:12pt; line-height:1.9}
+  .out-note{display:none}
+  @page{size:A4; margin:16mm}
+}
+</style>
+</head>
+<body>
+
+<div class="hdr">
+  <h1>🧠 ラウレアハレ AI業務アシスタント</h1>
+  <span class="badge wait" id="aiStatus" title="クリックでAI接続設定">AI確認中…</span>
+</div>
+
+<!-- ════════ ホーム ════════ -->
+<section class="scr on" id="sc-home">
+  <div class="note ai">
+    <b>本物のローカルAIが、あなたのメモを介護文書に文章化します。</b><br>
+    処理はすべてこの端末内（Ollama）で完結し、入力内容は<b>インターネットに一切送信されません</b>。AIが未起動の場合は、簡易テンプレートで下書きを作ります。
+  </div>
+  <div id="docMenu"></div>
+</section>
+
+<!-- ════════ エディタ ════════ -->
+<section class="scr" id="sc-editor">
+  <div class="editor-head">
+    <div class="actions"><button class="btn btn-gray" id="backHome">← 文書選択</button></div>
+    <h2 id="edTitle" style="font-size:18px;margin:4px 2px 12px"></h2>
+  </div>
+
+  <div class="editor-form" id="edForm">
+    <div class="resbar" id="resBar">
+      <label>対象の入居者</label>
+      <select id="resSelect"><option value="">（選択しない／手入力）</option></select>
+      <span class="info" id="resInfo"></span>
+    </div>
+    <div class="cd" id="formBox"></div>
+    <div class="actions">
+      <button class="btn btn-ai grow" id="genBtn">🧠 AIで文章化</button>
+      <button class="btn btn-sec" id="genTplBtn" title="AIを使わず定型文だけ作る">定型のみ</button>
+      <button class="btn btn-gray" id="stopBtn" style="display:none">■ 停止</button>
+      <button class="btn btn-gray" id="clearForm">クリア</button>
+    </div>
+  </div>
+
+  <div class="out-wrap">
+    <div class="actions">
+      <button class="btn btn-ok" id="copyBtn">📋 コピー</button>
+      <button class="btn btn-sec" id="printBtn">🖨️ 印刷</button>
+      <button class="btn btn-sec" id="saveDraftBtn">💾 下書き保存</button>
+      <button class="btn btn-sec" id="refineBtn" title="生成結果をAIでさらに整える">✨ 推敲</button>
+    </div>
+    <div id="out" contenteditable="true" spellcheck="false"></div>
+    <p class="out-note">※ 生成文は直接編集できます。AIは下書き支援であり、医療・介護の専門的判断と最終確認は記録者が行ってください。加算要件・制度の数値は最新の告示・通知でご確認ください。</p>
+  </div>
+</section>
+
+<!-- ════════ 知識（RAG） ════════ -->
+<section class="scr" id="sc-rag">
+  <div class="note ai"><b>施設の知識を覚えさせる</b><br>良いケアプラン例・施設の方針・運用ルール・よく使う言い回しなどを登録すると、AIが文章化のとき参照します（この端末内のみ・外部送信なし）。</div>
+  <div class="cd">
+    <div class="fld"><label>タイトル（何の知識か）</label><input id="ragTitle" placeholder="例：転倒時の家族連絡の文例 / 当施設の理念"></div>
+    <div class="fld"><label>内容</label><textarea id="ragBody" placeholder="覚えさせたい本文を貼り付け・入力"></textarea></div>
+    <div class="actions"><button class="btn btn-ai" id="ragAdd">＋ 知識を追加</button></div>
+  </div>
+  <div id="ragList"></div>
+</section>
+
+<!-- ════════ 設定 ════════ -->
+<section class="scr" id="sc-settings">
+  <div class="cd">
+    <h3 style="font-size:14px;color:var(--ai);margin:0 0 10px">AI接続（Ollama）</h3>
+    <div class="fld"><label>Ollama サーバー URL</label><input id="setOllama" placeholder="http://127.0.0.1:11434"></div>
+    <div class="fld"><label>使用モデル</label>
+      <select id="setModel"><option value="">（接続後に選択）</option></select>
+    </div>
+    <div class="fld"><label>創造性（temperature）</label>
+      <select id="setTemp">
+        <option value="0.2">0.2 低め（事実重視・定型向き）</option>
+        <option value="0.4" selected>0.4 標準</option>
+        <option value="0.7">0.7 高め（表現ゆたか）</option>
+      </select>
+    </div>
+    <div class="actions">
+      <button class="btn btn-ok" id="saveAI">💾 保存</button>
+      <button class="btn btn-sec" id="testAI">接続テスト</button>
+    </div>
+    <p class="muted" id="aiHelp"></p>
+  </div>
+  <div class="cd">
+    <h3 style="font-size:14px;color:var(--pri-d);margin:0 0 8px">文書の差出人など</h3>
+    <div class="fld"><label>施設名</label><input id="setFacility" placeholder="有料老人ホーム ラウレアハレ"></div>
+    <div class="fld"><label>連絡先電話</label><input id="setTel" placeholder="例：0977-00-0000"></div>
+    <div class="fld"><label>作成者・管理者名</label><input id="setAuthor" placeholder="橋爪 豪"></div>
+    <div class="actions"><button class="btn btn-ok" id="saveProfile">💾 保存</button></div>
+  </div>
+  <div class="cd">
+    <h3 style="font-size:14px;color:var(--pri-d);margin:0 0 8px">データ管理</h3>
+    <button class="btn btn-ng" id="clearDrafts">🗑️ 下書きをすべて削除</button>
+  </div>
+  <div class="cd" id="howto">
+    <h3 style="font-size:14px;color:var(--ai);margin:0 0 8px">AIが「確認中」「未接続」のままのとき</h3>
+    <div style="font-size:13px;color:var(--g7);line-height:1.8">
+      このアプリは <b>localhost で開いたとき</b>だけ、この端末内のAI（Ollama）に接続できます。<br>
+      ① ターミナルで <span class="kb">ollama serve</span> が動いていること（メニューバーのアイコンでも可）<br>
+      ② このページを <span class="kb">http://localhost:____/ai-assistant-local.html</span> で開くこと<br>
+      ③ それでも繋がらないときは、Ollama 起動時に <span class="kb">OLLAMA_ORIGINS=*</span> を付けてください。<br>
+      未接続でも「定型のみ」ボタンで下書きは作れます。
+    </div>
+  </div>
+</section>
+
+<!-- ボトムナビ -->
+<nav class="bnav">
+  <button class="on" data-sc="home"><span class="ic">📄</span>文書</button>
+  <button data-sc="drafts"><span class="ic">📁</span>下書き</button>
+  <button data-sc="rag"><span class="ic">📚</span>知識</button>
+  <button data-sc="settings"><span class="ic">⚙️</span>設定</button>
+</nav>
+
+<!-- 下書き -->
+<section class="scr" id="sc-drafts">
+  <div class="note">下書きは<b>この端末のブラウザにのみ</b>保存されます（個人情報を含む場合があります）。</div>
+  <div id="draftBox"></div>
+</section>
+
+<div id="toast"></div>
+
+<script>
+/* ═══════════════════════════════════════════════════════════════
+   ラウレアハレ AI業務アシスタント（ローカルAI版）
+   - 本物のローカルLLM（Ollama / 既定 127.0.0.1:11434）に /api/chat で接続
+   - 外部送信なし：呼び出し先は localhost のみ。CDN/外部URL不使用
+   - AI未接続でもテンプレート生成にフォールバック（最低限の動作保証）
+   - RAG：施設知識を localStorage に保存し、関連分をプロンプトへ注入
+   - 入居者の識別情報は共有キー su_residents_common から読込（機微情報は読まない）
+   ═══════════════════════════════════════════════════════════════ */
+
+/* ── 設定 ── */
+var SET_KEY='su_ai_local_settings';
+var DRAFTS_KEY='su_ai_drafts';        // 文書アプリと共用（同一オリジン）
+var RAG_KEY='su_ai_rag';
+var SET={
+  ollama:'http://127.0.0.1:11434', model:'', temp:'0.4',
+  facility:'有料老人ホーム ラウレアハレ', tel:'', author:'橋爪 豪'
+};
+(function(){try{var s=localStorage.getItem(SET_KEY);if(s){var o=JSON.parse(s);for(var k in o)if(o[k]!=null)SET[k]=o[k];}}catch(e){}})();
+
+function $(id){return document.getElementById(id)}
+function esc(s){return String(s==null?'':s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;').replace(/'/g,'&#39;')}
+function toast(m){var t=$('toast');t.textContent=m;t.classList.add('on');clearTimeout(toast._t);toast._t=setTimeout(function(){t.classList.remove('on')},2800)}
+function pad(n){return String(n).padStart(2,'0')}
+function todayISO(){var d=new Date();return d.getFullYear()+'-'+pad(d.getMonth()+1)+'-'+pad(d.getDate())}
+function jdate(iso){if(!iso)return'';var p=String(iso).slice(0,10).split('-');if(p.length<3)return iso;return p[0]+'年'+parseInt(p[1],10)+'月'+parseInt(p[2],10)+'日'}
+function blank(v,b){v=(v==null?'':String(v)).trim();return v?v:(b==null?'（　　）':b)}
+
+/* ═══════════ 入居者（識別情報のみ） ═══════════ */
+var COMMON_KEY='su_residents_common';
+var residents=[];
+function loadResidents(){
+  residents=[];
+  try{var raw=localStorage.getItem(COMMON_KEY);if(!raw)return;
+    var o=JSON.parse(raw);var list=(o&&o.residents)||[];
+    if(Array.isArray(list))residents=list.filter(function(r){return r&&r.active!==false&&(r.name||'').trim()})
+      .map(function(r){return {name:r.name||'',kana:r.kana||'',room:r.room||'',gender:r.gender||'',careLevel:r.careLevel||''}})
+      .sort(function(a,b){return String(a.room||'').localeCompare(String(b.room||''),'ja')});
+  }catch(e){residents=[]}
+}
+var CUR=null;
+function fillResSelect(){
+  var sel=$('resSelect');if(!sel)return;
+  var h='<option value="">（選択しない／手入力）</option>';
+  residents.forEach(function(r,i){h+='<option value="'+i+'">'+esc(r.name)+(r.room?'（'+esc(r.room)+'号室）':'')+(r.careLevel?' '+esc(r.careLevel):'')+'</option>'});
+  sel.innerHTML=h;sel.value='';
+  $('resInfo').textContent=residents.length?('登録 '+residents.length+'名'):'※ マスタ未連携（手入力可）';
+}
+
+/* ═══════════ RAG（施設知識） ═══════════ */
+function loadRag(){try{var s=localStorage.getItem(RAG_KEY);return s?(JSON.parse(s)||[]):[]}catch(e){return[]}}
+function saveRag(a){try{localStorage.setItem(RAG_KEY,JSON.stringify(a))}catch(e){toast('⚠️ 知識の保存に失敗（容量超過？）')}}
+/* 簡易検索：クエリ語と本文の語の重なりでスコア。上位 n 件を返す（ローカル完結・依存なし） */
+function ragRetrieve(query,n){
+  var items=loadRag();if(!items.length)return[];
+  var q=String(query||'').toLowerCase();
+  var terms=q.replace(/[、。・「」（）()]/g,' ').split(/\s+/).filter(function(t){return t.length>=2});
+  if(!terms.length)return items.slice(0,n); // 手がかりが無ければ先頭から
+  var scored=items.map(function(it){
+    var hay=((it.title||'')+' '+(it.body||'')).toLowerCase();
+    var sc=0;terms.forEach(function(t){var idx=0;while((idx=hay.indexOf(t,idx))>=0){sc++;idx+=t.length;}});
+    return {it:it,sc:sc};
+  }).filter(function(x){return x.sc>0}).sort(function(a,b){return b.sc-a.sc});
+  return scored.slice(0,n).map(function(x){return x.it});
+}
+function renderRag(){
+  var items=loadRag();var box=$('ragList');
+  if(!items.length){box.innerHTML='<div class="empty">登録された知識はありません</div>';return;}
+  box.innerHTML=items.map(function(it,i){
+    return '<div class="rag-item"><div style="flex:1;min-width:0"><div class="ti">'+esc(it.title||'(無題)')+'</div><div class="bd">'+esc((it.body||'').slice(0,80))+'</div></div>'+
+      '<button class="btn btn-ng" style="min-height:32px;padding:5px 10px;font-size:12px" data-rag-del="'+i+'">削除</button></div>';
+  }).join('');
+  Array.prototype.forEach.call(box.querySelectorAll('[data-rag-del]'),function(b){
+    b.addEventListener('click',function(){var a=loadRag();a.splice(parseInt(this.getAttribute('data-rag-del'),10),1);saveRag(a);renderRag();toast('削除しました')});
+  });
+}
+
+/* ═══════════ 文書定義 ═══════════
+   各文書: {id,icon,cat,title,sub,
+            fields:[{k,label,type,options?,ph?,memo?}],  // memo:true は自由記述メモ欄
+            system(d): AIへの役割・出力様式の指示（施設情報込み）,
+            user(d):   AIへ渡すユーザー入力の要約,
+            tpl(d):    AI不在時のテンプレート文字列 } */
+function L(a){return a.filter(function(x){return x!=null}).join('\n')}
+var FACBLOCK=function(){return '施設名：'+SET.facility+(SET.tel?'／TEL '+SET.tel:'')+'／作成者：'+SET.author;};
+function resLine(d){return d._res?('対象：'+d._res.name+'様'+(d._res.room?'（'+d._res.room+'号室）':'')+(d._res.careLevel?' '+d._res.careLevel:'')):('対象：'+blank(d.name,'(未指定)'));}
+
+var DOCS=[
+{id:'carelog',icon:'📝',cat:'日々の記録',title:'ケア記録',sub:'メモ→正式な介護記録に',
+ fields:[
+   {k:'name',label:'利用者氏名',type:'text'},
+   {k:'date',label:'日付',type:'date',def:'today'},
+   {k:'kind',label:'区分',type:'select',options:['様子・状態','食事','水分','排泄','入浴・清潔','服薬','睡眠','活動・レク','受診','家族対応']},
+   {k:'memo',label:'観察したこと（メモ・箇条書きでOK）',type:'textarea',memo:true,ph:'例：あさ ねつ37.8 食事はんぶん残す せきあり 元気ない'}
+ ],
+ system:function(d){return 'あなたは介護施設の経験豊富な介護職員です。職員の走り書きメモを、介護記録として通用する正確で簡潔な日本語の文章に整えます。事実のみを書き、推測や誇張はしない。敬体（です・ます）で、観察→対応の順に整理する。創作した数値や事実を加えない。'+FACBLOCK();},
+ user:function(d){return L([resLine(d),'日付：'+jdate(d.date),'区分：'+blank(d.kind),'','【職員のメモ】',blank(d.memo,'(空)'),'','上記メモを、介護記録の本文として整えてください。見出しや日付の再掲は不要、本文のみ。']);},
+ tpl:function(d){return L(['介護記録','','日付：'+jdate(d.date),resLine(d),'区分：'+blank(d.kind),'','〔記録〕',blank(d.memo)]);}},
+
+{id:'handover',icon:'🔁',cat:'日々の記録',title:'申し送り',sub:'要点メモ→申し送り文に',
+ fields:[
+   {k:'date',label:'日付',type:'date',def:'today'},
+   {k:'shift',label:'勤務帯',type:'select',options:['日勤→夜勤','早番→遅番','遅番→夜勤','夜勤→日勤']},
+   {k:'memo',label:'申し送る要点（箇条書きOK）',type:'textarea',memo:true,ph:'例：201山田さん 37度台つづく 受診よてい / 105佐藤さん 排便なし3日目'}
+ ],
+ system:function(d){return 'あなたは介護施設のリーダー職員です。勤務交代の申し送り事項を、次の勤務者が一読で把握できる簡潔な箇条書き＋必要な補足に整えます。対象者ごとに分け、重要度の高い健康・安全情報を上に。事実のみ。敬体。'+FACBLOCK();},
+ user:function(d){return L(['日付：'+jdate(d.date)+'　勤務帯：'+blank(d.shift),'','【申し送りメモ】',blank(d.memo,'(空)'),'','上記を申し送り文に整えてください。対象者別に整理し、対応依頼があれば明記。']);},
+ tpl:function(d){return L(['申し送り','','日付：'+jdate(d.date)+'　勤務帯：'+blank(d.shift),'',blank(d.memo)]);}},
+
+{id:'minutes',icon:'📋',cat:'会議・記録',title:'会議議事録',sub:'走り書きメモ→正式な議事録に',
+ fields:[
+   {k:'mtg',label:'会議名',type:'text',ph:'例：定例スタッフ会議／運営会議／サービス担当者会議'},
+   {k:'date',label:'開催日',type:'date',def:'today'},
+   {k:'place',label:'場所',type:'text',ph:'例：1階食堂／会議室'},
+   {k:'members',label:'出席者',type:'text',ph:'例：橋爪、看護2名、介護4名、ケアマネ'},
+   {k:'memo',label:'会議の走り書き（発言・決定事項を箇条書きでOK）',type:'textarea',memo:true,ph:'例：\n・夜間見守り体制 山田さん転倒多い→センサーマット試す\n・インフル予防 来週から面会時マスク徹底\n・忘年会 12/20で調整 田中担当\n・次回1/15'}
+ ],
+ system:function(d){return 'あなたは会議の書記です。会議の走り書きメモから、正式な議事録に整えます。構成は「会議名／日時／場所／出席者／議題ごとの協議内容／決定事項／宿題（担当者・期限）／次回予定」。発言を簡潔な常体または敬体で整理し、決定事項と宿題は箇条書きで明確にする。メモにない事実・発言・人物・数値は創作しない。誰が何を担当するかメモにあれば必ず残す。'+FACBLOCK();},
+ user:function(d){return L(['会議名：'+blank(d.mtg),'開催日：'+jdate(d.date)+'　場所：'+blank(d.place),'出席者：'+blank(d.members),'','【会議の走り書き】',blank(d.memo,'(空)'),'','上記を正式な議事録に整えてください。議題ごとに協議内容を整理し、決定事項・宿題（担当/期限）・次回予定を明確に。']);},
+ tpl:function(d){return L([blank(d.mtg,'会議')+'　議事録','','開催日：'+jdate(d.date)+'　場所：'+blank(d.place),'出席者：'+blank(d.members),'','〔協議・決定事項〕',blank(d.memo)]);}},
+
+{id:'incident',icon:'⚠️',cat:'報告書',title:'事故・ヒヤリハット報告',sub:'状況メモ→報告書に',
+ fields:[
+   {k:'type',label:'種別',type:'select',options:['ヒヤリハット','事故']},
+   {k:'name',label:'対象者氏名',type:'text'},
+   {k:'when',label:'発生日時',type:'text',def:'nowdt',ph:'例：2026年6月1日 14時30分頃'},
+   {k:'place',label:'発生場所',type:'text',ph:'例：居室・廊下・浴室'},
+   {k:'memo',label:'何が起きたか（メモでOK）',type:'textarea',memo:true,ph:'例：トイレいこうとして ベッドよこで しりもち 外傷なし バイタル異常なし 様子見'}
+ ],
+ system:function(d){return 'あなたは介護施設の管理者です。職員のメモから、事故・ヒヤリハット報告書の本文を作成します。「発生状況／発生時の対応／考えられる原因／再発防止策」の4項目に整理。事実と推測を区別し、原因と再発防止は現場で実行可能な具体策を提案（ただし事実の捏造はしない）。敬体。'+FACBLOCK();},
+ user:function(d){return L([blank(d.type)+'報告',resLine(d),'発生日時：'+blank(d.when)+'　場所：'+blank(d.place),'','【状況メモ】',blank(d.memo,'(空)'),'','上記から、発生状況／発生時の対応／考えられる原因／再発防止策 の4項目に整えてください。']);},
+ tpl:function(d){return L([blank(d.type)+'報告書','',resLine(d),'発生日時：'+blank(d.when),'場所：'+blank(d.place),'','〔状況〕',blank(d.memo),'','〔対応〕','','〔原因〕','','〔再発防止策〕','']);}},
+
+{id:'careplan',icon:'📋',cat:'ケアプラン',title:'ケアプラン素案',sub:'課題メモ→第2表の素案に',
+ fields:[
+   {k:'name',label:'利用者氏名',type:'text'},
+   {k:'careLevel',label:'要介護度',type:'text'},
+   {k:'memo',label:'本人の状況・課題・希望（メモOK）',type:'textarea',memo:true,ph:'例：歩行ふらつき 転倒不安 でも自分でトイレ行きたい / 物忘れ 服薬わすれ多い / 家族は安全第一希望'}
+ ],
+ system:function(d){return 'あなたは経験豊富な介護支援専門員（ケアマネジャー）です。利用者の状況メモから、居宅サービス計画書 第2表の素案を作成します。「生活全般の解決すべき課題（ニーズ）／長期目標／短期目標／援助内容（サービス内容・種別・頻度）」を、本人主体・自立支援の視点で具体的に。本人の意欲を引き出す前向きな表現。事実にない病名や数値は作らない。これは素案であり最終決定は専門職が行う前提。敬体。'+FACBLOCK();},
+ user:function(d){return L([resLine(d),'要介護度：'+blank(d.careLevel||(d._res&&d._res.careLevel)),'','【状況・課題・希望メモ】',blank(d.memo,'(空)'),'','上記から、ニーズごとに 課題／長期目標／短期目標／援助内容 を整理した第2表素案を作ってください。複数ニーズがあれば①②と番号を振る。']);},
+ tpl:function(d){return L(['居宅サービス計画書（2）素案','',resLine(d),'要介護度：'+blank(d.careLevel),'','〔課題・希望メモ〕',blank(d.memo)]);}},
+
+{id:'monitor',icon:'📈',cat:'ケアプラン',title:'モニタリング記録',sub:'変化メモ→記録文に',
+ fields:[
+   {k:'name',label:'利用者氏名',type:'text'},
+   {k:'date',label:'実施日',type:'date',def:'today'},
+   {k:'memo',label:'この期間の変化・達成度（メモOK）',type:'textarea',memo:true,ph:'例：歩行リハ週3継続 ふらつき減 トイレ自立できる日ふえた 服薬カレンダーで飲み忘れ減'}
+ ],
+ system:function(d){return 'あなたは介護支援専門員です。メモから、モニタリング記録の本文を作成します。「サービス実施状況／目標の達成度／心身・生活の変化／今後の課題・対応／計画変更の要否」に整理。事実ベースで達成・未達を明確に。敬体。'+FACBLOCK();},
+ user:function(d){return L([resLine(d),'実施日：'+jdate(d.date),'','【変化・達成度メモ】',blank(d.memo,'(空)'),'','上記からモニタリング記録の本文に整えてください。']);},
+ tpl:function(d){return L(['モニタリング記録','',resLine(d),'実施日：'+jdate(d.date),'','〔経過〕',blank(d.memo)]);}},
+
+{id:'letter',icon:'✉️',cat:'家族連絡',title:'家族向け手紙',sub:'要点メモ→丁寧な手紙に',
+ fields:[
+   {k:'to',label:'宛先（ご家族氏名）',type:'text',ph:'例：山田 一郎'},
+   {k:'about',label:'本文中の呼称',type:'text',ph:'例：お母様'},
+   {k:'memo',label:'伝えたいこと（メモOK）',type:'textarea',memo:true,ph:'例：先週から食欲もどった 6/3定期受診 結果また連絡 面会いつでもどうぞ'}
+ ],
+ system:function(d){return 'あなたは介護施設の管理者で、丁寧なビジネス文書を書きます。要点メモから、ご家族宛の正式な手紙を作成します。頭語（拝啓）・時候の挨拶・本文・結びの挨拶・結語（敬具）の体裁。誠実で温かいが過剰でない敬語。事実を脚色しない。署名は施設名と作成者名。'+FACBLOCK();},
+ user:function(d){return L(['宛先：'+blank(d.to)+'様','本人の呼称：'+blank(d.about,'ご本人'),'','【伝えたいこと】',blank(d.memo,'(空)'),'','上記を正式な手紙の文面に整えてください。日付は'+jdate(todayISO())+'。']);},
+ tpl:function(d){return L([jdate(todayISO()),'',blank(d.to)+'　様','','　拝啓　時下ますますご清祥のこととお慶び申し上げます。','','　'+blank(d.memo),'','敬具','',SET.facility,'管理者　'+SET.author]);}},
+
+{id:'line',icon:'💬',cat:'家族連絡',title:'家族向けLINE・短文',sub:'要点→やわらかい短文に',
+ fields:[
+   {k:'name',label:'対象の入居者',type:'text'},
+   {k:'kind',label:'用件',type:'select',options:['日常報告','発熱','転倒','体調変化','入院','退院','受診結果','面会案内']},
+   {k:'memo',label:'伝える内容（短くメモ）',type:'textarea',memo:true,ph:'例：10時ごろ尻もち 外傷なし 変わりなし'}
+ ],
+ system:function(d){return 'あなたは介護施設の職員で、ご家族へLINEで連絡します。要点から、簡潔で分かりやすく、丁寧だが堅すぎない短文メッセージを作ります。不安をあおらず事実を正確に。長すぎない（スマホで読みやすい長さ）。'+FACBLOCK();},
+ user:function(d){return L(['対象：'+blank(d.name)+'様','用件：'+blank(d.kind),'','【内容】',blank(d.memo,'(空)'),'','上記をLINEメッセージの文面に。冒頭に施設名のあいさつ、最後に必要なら返信のお願い。']);},
+ tpl:function(d){return L([blank(d.name)+'様のご家族様','','いつもお世話になっております。'+SET.facility+'です。','',blank(d.memo),'','今後ともよろしくお願いいたします。']);}}
+];
+
+/* ═══════════ ホーム描画 ═══════════ */
+function renderHome(){
+  var cats=[],byCat={};
+  DOCS.forEach(function(d){if(!byCat[d.cat]){byCat[d.cat]=[];cats.push(d.cat)}byCat[d.cat].push(d)});
+  var icons={'日々の記録':'🖊️','会議・記録':'🗣️','報告書':'📑','ケアプラン':'🗂️','家族連絡':'💐'};
+  var h='';
+  cats.forEach(function(cat){
+    h+='<div class="cat-h">'+(icons[cat]||'📂')+' '+esc(cat)+'</div><div class="dgrid">';
+    byCat[cat].forEach(function(d){h+='<button class="dcard" data-doc="'+esc(d.id)+'"><span class="ic">'+d.icon+'</span><span class="t">'+esc(d.title)+'</span><span class="s">'+esc(d.sub)+'</span></button>';});
+    h+='</div>';
+  });
+  $('docMenu').innerHTML=h;
+  Array.prototype.forEach.call($('docMenu').querySelectorAll('.dcard'),function(b){b.addEventListener('click',function(){openDoc(this.getAttribute('data-doc'))})});
+}
+
+/* ═══════════ エディタ ═══════════ */
+var curDoc=null;
+function defVal(f){
+  if(f.def==='today')return todayISO();
+  if(f.def==='author')return SET.author;
+  if(f.def==='nowdt'){var d=new Date();return d.getFullYear()+'年'+(d.getMonth()+1)+'月'+d.getDate()+'日 '+d.getHours()+'時'+pad(d.getMinutes())+'分頃';}
+  return f.def||'';
+}
+function openDoc(id){
+  curDoc=DOCS.filter(function(x){return x.id===id})[0];if(!curDoc)return;
+  $('edTitle').textContent=curDoc.icon+' '+curDoc.title;
+  var h='<div class="fgrid">';var memoHTML='';
+  curDoc.fields.forEach(function(f){
+    var v=esc(defVal(f));
+    if(f.memo){
+      memoHTML='<div class="fld wide memo"><label>'+esc(f.label)+'</label><textarea data-k="'+esc(f.k)+'" placeholder="'+esc(f.ph||'')+'">'+v+'</textarea></div>';
+      return;
+    }
+    if(f.type==='textarea'){h+='<div class="fld wide"><label>'+esc(f.label)+'</label><textarea data-k="'+esc(f.k)+'" placeholder="'+esc(f.ph||'')+'">'+v+'</textarea></div>';}
+    else if(f.type==='select'){h+='<div class="fld"><label>'+esc(f.label)+'</label><select data-k="'+esc(f.k)+'"><option value=""></option>'+f.options.map(function(o){return '<option value="'+esc(o)+'"'+(defVal(f)===o?' selected':'')+'>'+esc(o)+'</option>'}).join('')+'</select></div>';}
+    else{var t=(f.type==='date'?'date':'text');h+='<div class="fld"><label>'+esc(f.label)+'</label><input data-k="'+esc(f.k)+'" type="'+t+'" value="'+v+'" placeholder="'+esc(f.ph||'')+'"></div>';}
+  });
+  h+='</div>'+memoHTML;
+  $('formBox').innerHTML=h;
+  $('out').textContent='';$('out').classList.remove('gen','cursor');
+  applyCurResident();
+  showScreen('editor');window.scrollTo(0,0);
+}
+function applyCurResident(){
+  if(!curDoc)return;
+  var nm=document.querySelector('#formBox [data-k="name"]');
+  if(CUR&&nm&&!nm.value)nm.value=CUR.name;
+  var cl=document.querySelector('#formBox [data-k="careLevel"]');
+  if(CUR&&cl&&!cl.value&&CUR.careLevel)cl.value=CUR.careLevel;
+}
+function collectForm(){
+  var d={};
+  Array.prototype.forEach.call($('formBox').querySelectorAll('[data-k]'),function(inp){d[inp.getAttribute('data-k')]=inp.value==null?'':inp.value;});
+  d._res=CUR;return d;
+}
+
+/* ═══════════ Ollama 接続 ═══════════ */
+var AI={online:false,models:[]};
+function setAIStatus(state,txt){
+  var b=$('aiStatus');b.className='badge '+(state||'wait');b.textContent=txt;
+}
+/* モデル名からパラメータ規模（"14b"→14, "7b"→7 等）を読み、最大のものを既定に選ぶ */
+function pickBestModel(list){
+  function size(n){var m=String(n).toLowerCase().match(/(\d+(?:\.\d+)?)\s*b/);return m?parseFloat(m[1]):0;}
+  return list.slice().sort(function(a,b){return size(b)-size(a)})[0]||list[0];
+}
+function ollamaBase(){return (SET.ollama||'http://127.0.0.1:11434').replace(/\/+$/,'');}
+function checkAI(){
+  setAIStatus('wait','AI確認中…');
+  return fetch(ollamaBase()+'/api/tags',{method:'GET'}).then(function(r){return r.json()}).then(function(d){
+    AI.models=((d&&d.tags)||(d&&d.models)||[]).map(function(m){return m.name||m.model}).filter(Boolean);
+    AI.online=true;
+    // 既定モデル未設定／設定が消滅した場合：パラメータ数が大きい（賢い）モデルを優先採用
+    if((!SET.model||AI.models.indexOf(SET.model)<0)&&AI.models.length)SET.model=pickBestModel(AI.models);
+    setAIStatus('ok','🟢 AI: '+(SET.model||AI.models[0]||'接続OK'));
+    fillModelSelect();
+    return true;
+  }).catch(function(){
+    AI.online=false;setAIStatus('err','🔴 AI未接続（定型のみ可）');return false;
+  });
+}
+function fillModelSelect(){
+  var sel=$('setModel');if(!sel)return;
+  sel.innerHTML=(AI.models.length?'':'<option value="">（モデル未取得）</option>')+AI.models.map(function(m){return '<option value="'+esc(m)+'"'+(m===SET.model?' selected':'')+'>'+esc(m)+'</option>'}).join('');
+}
+
+/* ストリーミング生成。onToken(chunk) で逐次表示。AbortController で停止可 */
+var curAbort=null;
+/* 全文書共通：言語固定と捏造禁止を system 先頭に強制注入（モデルの言語混線・幻覚を抑制） */
+var GUARD='【最重要・例外なし】\n'+
+  '1. 出力は必ず日本語のみ。中国語・英語の単語や文を絶対に混ぜない。中国語が出かけたら日本語に直す。\n'+
+  '2. 入力に書かれていない事実・人物・身体部位・数値・行動を一切創作しない。書かれていないことは書かない。不明な点は「（要確認）」と記す。\n'+
+  '3. 説明・前置き・確認の問い返しをせず、完成した文書の本文だけを出力する。\n\n';
+function aiGenerate(system,user,onToken){
+  if(!AI.online)return Promise.reject(new Error('AI未接続'));
+  if(!SET.model)return Promise.reject(new Error('モデル未選択'));
+  curAbort=('AbortController'in window)?new AbortController():null;
+  var body={model:SET.model,stream:true,
+    options:{temperature:parseFloat(SET.temp)||0.4,repeat_penalty:1.15,top_p:0.85},
+    messages:[{role:'system',content:GUARD+system},{role:'user',content:user}]};
+  return fetch(ollamaBase()+'/api/chat',{method:'POST',headers:{'Content-Type':'application/json'},
+    body:JSON.stringify(body),signal:curAbort?curAbort.signal:undefined}).then(function(res){
+    if(!res.ok)throw new Error('HTTP '+res.status);
+    if(!res.body||!res.body.getReader){ // ストリーム非対応環境
+      return res.text().then(function(t){var full='';t.split('\n').forEach(function(line){if(!line.trim())return;try{var j=JSON.parse(line);if(j.message&&j.message.content){full+=j.message.content;onToken(j.message.content);}}catch(e){}});return full;});
+    }
+    var reader=res.body.getReader();var dec=new TextDecoder();var buf='';var full='';
+    function pump(){return reader.read().then(function(r){
+      if(r.done)return full;
+      buf+=dec.decode(r.value,{stream:true});
+      var lines=buf.split('\n');buf=lines.pop();
+      lines.forEach(function(line){if(!line.trim())return;try{var j=JSON.parse(line);if(j.message&&j.message.content){full+=j.message.content;onToken(j.message.content);}}catch(e){}});
+      return pump();
+    });}
+    return pump();
+  });
+}
+
+/* ═══════════ 生成（AI / テンプレート） ═══════════ */
+function buildRagBlock(d){
+  // メモ＋区分などからクエリを作り、関連知識を取得
+  var q=[d.memo,d.kind,d.type,curDoc.title].filter(Boolean).join(' ');
+  var hits=ragRetrieve(q,3);
+  if(!hits.length)return '';
+  return '\n\n【施設の参考知識（必要に応じて参照。無関係なら無視）】\n'+hits.map(function(h,i){return (i+1)+'. '+(h.title?h.title+'：':'')+h.body;}).join('\n');
+}
+/* モデルが付けがちな前置き・問い返し・締めの定型句を機械的に除去（本文だけ残す） */
+function cleanupOutput(){
+  var out=$('out');var t=out.innerText;if(!t)return;
+  var lines=t.split('\n');
+  var junk=/(以上[、,].*(ご確認|よろしく)|ご確認いただけ|いかがでしょうか|参考になれば|お役に立て|^(承知|了解|はい[、,]?わかりました)|修正が必要|必要に応じて(修正|追記)してください|^(以下|こちら)が.*(です|になります)[:：]?$)/;
+  while(lines.length){var last=lines[lines.length-1].trim();if(last===''){lines.pop();continue;}if(junk.test(last)){lines.pop();continue;}break;}
+  while(lines.length){var first=lines[0].trim();if(first===''){lines.shift();continue;}if(/^(承知しました|了解しました|はい[、,]|以下が|こちらが).{0,30}$/.test(first)){lines.shift();continue;}break;}
+  var cleaned=lines.join('\n').trim();
+  if(cleaned&&cleaned!==t.trim())out.innerText=cleaned;
+}
+function generateAI(){
+  if(!curDoc)return;
+  var d=collectForm();
+  if(!AI.online){toast('AI未接続のため定型で生成します');return generateTpl();}
+  var system=curDoc.system(d);
+  var user=curDoc.user(d)+buildRagBlock(d);
+  var out=$('out');out.textContent='';out.classList.add('gen','cursor');
+  $('genBtn').disabled=true;$('genTplBtn').disabled=true;$('stopBtn').style.display='';
+  setAIStatus('wait','🧠 生成中…');
+  aiGenerate(system,user,function(tok){out.textContent+=tok;out.scrollTop=out.scrollHeight;})
+  .then(function(){cleanupOutput();toast('✅ 生成しました');})
+  .catch(function(e){
+    if(e&&e.name==='AbortError'){toast('停止しました');}
+    else{toast('⚠️ 生成失敗: '+e.message+'（定型に切替）');generateTpl();}
+  })
+  .then(function(){out.classList.remove('cursor','gen');$('genBtn').disabled=false;$('genTplBtn').disabled=false;$('stopBtn').style.display='none';curAbort=null;setAIStatus(AI.online?'ok':'err',AI.online?('🟢 AI: '+SET.model):'🔴 AI未接続');});
+}
+function generateTpl(){
+  if(!curDoc)return;var d=collectForm();
+  $('out').textContent=curDoc.tpl(d);
+  $('out').classList.remove('gen','cursor');
+}
+function refineAI(){
+  if(!AI.online){toast('AI未接続です');return;}
+  var cur=$('out').innerText.trim();if(!cur){toast('先に文章を生成してください');return;}
+  var system='あなたは介護文書の校正者です。次の文章を、意味を変えずに、より自然で読みやすく、誤字や重複を直して整えます。事実は追加・削除しない。敬体で統一。';
+  var user='次の文章を推敲してください。本文のみ返す：\n\n'+cur;
+  var out=$('out');out.textContent='';out.classList.add('gen','cursor');
+  $('refineBtn').disabled=true;$('stopBtn').style.display='';setAIStatus('wait','✨ 推敲中…');
+  aiGenerate(system,user,function(tok){out.textContent+=tok;out.scrollTop=out.scrollHeight;})
+  .then(function(){cleanupOutput();toast('✨ 推敲しました')})
+  .catch(function(e){if(e&&e.name==='AbortError')toast('停止しました');else toast('⚠️ 推敲失敗: '+e.message)})
+  .then(function(){out.classList.remove('cursor','gen');$('refineBtn').disabled=false;$('stopBtn').style.display='none';curAbort=null;setAIStatus(AI.online?'ok':'err',AI.online?('🟢 AI: '+SET.model):'🔴 AI未接続');});
+}
+function stopGen(){if(curAbort)curAbort.abort();}
+
+/* ═══════════ コピー・印刷・下書き ═══════════ */
+function copyOut(){
+  var text=$('out').innerText;if(!text.trim()){toast('先に生成してください');return;}
+  function fb(){var ta=document.createElement('textarea');ta.value=text;ta.style.position='fixed';ta.style.opacity='0';document.body.appendChild(ta);ta.select();try{document.execCommand('copy');toast('📋 コピーしました')}catch(e){toast('コピー不可。手動選択を')}document.body.removeChild(ta);}
+  if(navigator.clipboard&&navigator.clipboard.writeText)navigator.clipboard.writeText(text).then(function(){toast('📋 コピーしました')},fb);else fb();
+}
+function loadDrafts(){try{var s=localStorage.getItem(DRAFTS_KEY);return s?(JSON.parse(s)||[]):[]}catch(e){return[]}}
+function saveDrafts(a){try{localStorage.setItem(DRAFTS_KEY,JSON.stringify(a))}catch(e){toast('⚠️ 保存失敗（容量？）')}}
+function saveCurrentDraft(){
+  var text=$('out').innerText;if(!text.trim()){toast('先に生成してください');return;}
+  var a=loadDrafts();var n=new Date();
+  var stamp=n.getFullYear()+'/'+pad(n.getMonth()+1)+'/'+pad(n.getDate())+' '+pad(n.getHours())+':'+pad(n.getMinutes());
+  a.unshift({id:'d'+n.getTime(),title:(curDoc?curDoc.title:'文書')+'（AI）',sub:(text.split('\n').filter(function(l){return l.trim()})[0]||'').slice(0,24),date:stamp,docId:curDoc?curDoc.id:'',text:text});
+  if(a.length>100)a=a.slice(0,100);saveDrafts(a);toast('💾 保存しました');
+}
+function renderDrafts(){
+  var a=loadDrafts();var box=$('draftBox');
+  if(!a.length){box.innerHTML='<div class="empty">保存された下書きはありません</div>';return;}
+  box.innerHTML=a.map(function(dr){return '<div class="draft"><div class="meta"><div class="t">'+esc(dr.title)+(dr.sub?'　<span style="font-weight:400;color:var(--g6)">'+esc(dr.sub)+'</span>':'')+'</div><div class="d">'+esc(dr.date)+'</div></div><button class="btn btn-sec mini" data-open="'+esc(dr.id)+'">開く</button><button class="btn btn-ng mini" data-rm="'+esc(dr.id)+'">削除</button></div>';}).join('');
+  Array.prototype.forEach.call(box.querySelectorAll('[data-open]'),function(b){b.addEventListener('click',function(){openDraft(this.getAttribute('data-open'))})});
+  Array.prototype.forEach.call(box.querySelectorAll('[data-rm]'),function(b){b.addEventListener('click',function(){var a=loadDrafts().filter(function(x){return x.id!==this.getAttribute('data-rm')}.bind(this));saveDrafts(a);renderDrafts();toast('削除しました')})});
+}
+function openDraft(id){
+  var dr=loadDrafts().filter(function(x){return x.id===id})[0];if(!dr)return;
+  curDoc=DOCS.filter(function(x){return x.id===dr.docId})[0]||null;
+  $('edTitle').textContent='📄 '+dr.title+'（保存した下書き）';
+  $('formBox').innerHTML='<p style="color:var(--g6);font-size:13px;margin:0">保存済みの下書きです。本文を直接編集・推敲・再保存できます。</p>';
+  $('out').textContent=dr.text;$('out').classList.remove('gen','cursor');
+  showScreen('editor');window.scrollTo(0,0);
+}
+function clearAllDrafts(){
+  if(!loadDrafts().length){toast('下書きはありません');return;}
+  if(confirm('保存した下書きをすべて削除します。よろしいですか？')){try{localStorage.removeItem(DRAFTS_KEY)}catch(e){}renderDrafts();toast('削除しました');}
+}
+
+/* ═══════════ 設定 ═══════════ */
+function fillSettings(){
+  $('setOllama').value=SET.ollama;$('setTemp').value=SET.temp;
+  $('setFacility').value=SET.facility;$('setTel').value=SET.tel;$('setAuthor').value=SET.author;
+  fillModelSelect();
+  $('aiHelp').textContent=location.protocol==='file:'? 'いまファイルを直接開いています（file://）。AI接続には localhost 経由での表示を推奨します。':'';
+}
+function persist(){try{localStorage.setItem(SET_KEY,JSON.stringify(SET))}catch(e){}}
+function saveAI(){
+  SET.ollama=$('setOllama').value.trim()||'http://127.0.0.1:11434';
+  SET.model=$('setModel').value||SET.model;SET.temp=$('setTemp').value;
+  persist();toast('💾 AI設定を保存');checkAI();
+}
+function saveProfile(){
+  SET.facility=$('setFacility').value.trim()||'有料老人ホーム ラウレアハレ';
+  SET.tel=$('setTel').value.trim();SET.author=$('setAuthor').value.trim()||'橋爪 豪';
+  persist();toast('💾 保存しました');
+}
+
+/* ═══════════ 画面遷移 ═══════════ */
+function showScreen(name){
+  ['home','editor','drafts','rag','settings'].forEach(function(s){var el=$('sc-'+s);if(el)el.classList.toggle('on',s===name)});
+  Array.prototype.forEach.call(document.querySelectorAll('.bnav button'),function(b){var sc=b.getAttribute('data-sc');b.classList.toggle('on',sc===name||(name==='editor'&&sc==='home'))});
+  if(name==='drafts')renderDrafts();
+  if(name==='rag')renderRag();
+  if(name==='settings')fillSettings();
+}
+
+/* ═══════════ 初期化 ═══════════ */
+function init(){
+  loadResidents();renderHome();fillResSelect();
+  $('resSelect').addEventListener('change',function(){var v=this.value;CUR=(v==='')?null:residents[parseInt(v,10)]||null;applyCurResident();if(CUR)toast('対象者：'+CUR.name)});
+  $('backHome').addEventListener('click',function(){showScreen('home')});
+  $('genBtn').addEventListener('click',generateAI);
+  $('genTplBtn').addEventListener('click',function(){generateTpl();toast('定型で生成しました')});
+  $('stopBtn').addEventListener('click',stopGen);
+  $('clearForm').addEventListener('click',function(){if(curDoc){var id=curDoc.id;openDoc(id);toast('クリアしました')}});
+  $('copyBtn').addEventListener('click',copyOut);
+  $('printBtn').addEventListener('click',function(){if(!$('out').innerText.trim()){toast('先に生成してください');return;}window.print();});
+  $('saveDraftBtn').addEventListener('click',saveCurrentDraft);
+  $('refineBtn').addEventListener('click',refineAI);
+  $('ragAdd').addEventListener('click',function(){
+    var t=$('ragTitle').value.trim(),b=$('ragBody').value.trim();
+    if(!b){toast('内容を入力してください');return;}
+    var a=loadRag();a.unshift({title:t,body:b,at:Date.now()});saveRag(a);
+    $('ragTitle').value='';$('ragBody').value='';renderRag();toast('📚 知識を追加しました');
+  });
+  $('saveAI').addEventListener('click',saveAI);
+  $('testAI').addEventListener('click',function(){checkAI().then(function(ok){toast(ok?'✅ 接続OK':'⚠️ 接続できません')})});
+  $('saveProfile').addEventListener('click',saveProfile);
+  $('clearDrafts').addEventListener('click',clearAllDrafts);
+  $('aiStatus').addEventListener('click',function(){showScreen('settings')});
+  Array.prototype.forEach.call(document.querySelectorAll('.bnav button'),function(b){b.addEventListener('click',function(){showScreen(this.getAttribute('data-sc'))})});
+  showScreen('home');
+  checkAI(); // 起動時にAI接続を確認
+}
+document.addEventListener('DOMContentLoaded',init);
+</script>
+</body>
+</html>
