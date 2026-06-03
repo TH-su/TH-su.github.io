@@ -365,6 +365,22 @@ var DOCS=[
  user:function(d){return L(['会議名：'+blank(d.mtg),'開催日：'+jdate(d.date)+'　場所：'+blank(d.place),'出席者：'+blank(d.members),'','【会議の走り書き】',blank(d.memo,'(空)'),'','上記を正式な議事録に整えてください。議題ごとに協議内容を整理し、決定事項・宿題（担当/期限）・次回予定を明確に。']);},
  tpl:function(d){return L([blank(d.mtg,'会議')+'　議事録','','開催日：'+jdate(d.date)+'　場所：'+blank(d.place),'出席者：'+blank(d.members),'','〔協議・決定事項〕',blank(d.memo)]);}},
 
+{id:'boardminutes',icon:'🏛️',cat:'法人運営',title:'取締役会議事録',sub:'録音の文字起こし→法定様式に',
+ fields:[
+   {k:'company',label:'会社名',type:'text',ph:'例：シルバーユニックス株式会社'},
+   {k:'no',label:'回次',type:'text',ph:'例：第12期 第3回'},
+   {k:'date',label:'開催日',type:'date',def:'today'},
+   {k:'time',label:'開催時刻',type:'text',ph:'例：午後3時00分〜午後4時30分'},
+   {k:'place',label:'開催場所',type:'text',ph:'例：当社本店会議室'},
+   {k:'chair',label:'議長',type:'text',ph:'例：代表取締役 橋爪 豪'},
+   {k:'directors',label:'出席役員（取締役・監査役）',type:'text',ph:'例：取締役3名中3名出席、監査役1名出席。氏名を列挙'},
+   {k:'agenda',label:'付議事項（議案・報告事項）',type:'text',ph:'例：第1号議案 〇〇の件／報告事項 業績報告。分かる範囲で'},
+   {k:'memo',label:'録音の文字起こしを貼り付け（長文OK）',type:'textarea',memo:true,ph:'文字起こしテキストをそのまま貼り付けてください。話し言葉・「えー」等のフィラーが混ざっていて構いません。AIが議事録の体裁に整理します。'}
+ ],
+ system:function(d){return 'あなたは会社法に精通した取締役会の議事録作成担当です。録音の文字起こしから、会社法第369条の要件を満たす取締役会議事録を作成します。\n\n【出力構成（この順）】\n1. 表題「取締役会議事録」\n2. 開催日時・開催場所\n3. 出席状況（取締役○名中○名出席、監査役の出席、定足数を満たし本取締役会は適法に成立した旨）\n4. 議長の選任・氏名\n5. 報告事項（あれば、要領と結果）\n6. 決議事項（議案ごとに：議案名→議事の経過の要領→議長が賛否を諮った結果「出席取締役全員一致をもって可決」等。文字起こしから賛否が読み取れる場合のみ記載）\n7. 特別利害関係を有する取締役がいれば明示（文字起こしにあれば）\n8. 閉会時刻\n9. 末尾に「以上の議事の経過及び結果を明確にするため、本議事録を作成し、出席取締役及び監査役が次に記名押印する。」＋日付＋署名欄（議長＝代表取締役、出席取締役の氏名と㊞）\n\n【厳守】\n- 文字起こしに無い決議・賛否・数値・発言・人物を絶対に創作しない。読み取れない箇所は「（要確認）」と明記する。\n- 話し言葉・フィラー（えー、あの等）は除き、議事録の格調ある書面語に整える。\n- 賛否が文字起こしから不明な議案は「（賛否の記録を要確認）」とする。憶測で「全員一致可決」と書かない。\n- これは法的効力を持つ文書の素案であり、最終確認・記名押印は人間が行う前提。';},
+ user:function(d){return L(['会社名：'+blank(d.company),'回次：'+blank(d.no),'開催日：'+jdate(d.date)+'　時刻：'+blank(d.time),'開催場所：'+blank(d.place),'議長：'+blank(d.chair),'出席役員：'+blank(d.directors),'付議事項：'+blank(d.agenda),'','【録音の文字起こし】',blank(d.memo,'(空)'),'','上記の文字起こしから、会社法第369条の要件を満たす取締役会議事録を作成してください。文字起こしに無いことは創作せず、不明箇所は（要確認）と記すこと。']);},
+ tpl:function(d){return L(['取締役会議事録','','会社名：'+blank(d.company),'回次：'+blank(d.no),'開催日時：'+jdate(d.date)+'　'+blank(d.time),'開催場所：'+blank(d.place),'議長：'+blank(d.chair),'出席役員：'+blank(d.directors),'','〔付議事項〕',blank(d.agenda),'','〔議事の経過（文字起こし）〕',blank(d.memo),'','──────────','上記のとおり相違ありません。','　　年　月　日','議長（代表取締役）　　　　　　　㊞','出席取締役　　　　　　　　　　　㊞']);}},
+
 {id:'incident',icon:'⚠️',cat:'報告書',title:'事故・ヒヤリハット報告',sub:'状況メモ→報告書に',
  fields:[
    {k:'type',label:'種別',type:'select',options:['ヒヤリハット','事故']},
@@ -422,7 +438,7 @@ var DOCS=[
 function renderHome(){
   var cats=[],byCat={};
   DOCS.forEach(function(d){if(!byCat[d.cat]){byCat[d.cat]=[];cats.push(d.cat)}byCat[d.cat].push(d)});
-  var icons={'日々の記録':'🖊️','会議・記録':'🗣️','報告書':'📑','ケアプラン':'🗂️','家族連絡':'💐'};
+  var icons={'日々の記録':'🖊️','会議・記録':'🗣️','法人運営':'🏛️','報告書':'📑','ケアプラン':'🗂️','家族連絡':'💐'};
   var h='';
   cats.forEach(function(cat){
     h+='<div class="cat-h">'+(icons[cat]||'📂')+' '+esc(cat)+'</div><div class="dgrid">';
