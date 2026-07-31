@@ -188,7 +188,7 @@ input,select,textarea{font-family:inherit; font-size:15px}
   <div class="cd">
     <div class="fld"><label>施設名</label><input id="setFacility" placeholder="有料老人ホーム ラウレアハレ"></div>
     <div class="fld"><label>連絡先電話</label><input id="setTel" placeholder="例：0977-00-0000"></div>
-    <div class="fld"><label>作成者・管理者名（文書の差出人）</label><input id="setAuthor" placeholder="橋爪 豪"></div>
+    <div class="fld"><label>作成者・管理者名（文書の差出人）</label><input id="setAuthor" placeholder="管理者"></div>
     <div class="actions"><button class="btn btn-ok" id="saveSettings">💾 設定を保存</button></div>
     <p class="out-note">設定はこの端末にのみ保存され、各文書の初期値に使われます。</p>
   </div>
@@ -227,7 +227,7 @@ input,select,textarea{font-family:inherit; font-size:15px}
 /* ── 施設既定値（設定で上書き可。機微情報ではない） ── */
 var SETTINGS_KEY='su_ai_settings';
 var DRAFTS_KEY='su_ai_drafts';
-var SET={facility:'有料老人ホーム ラウレアハレ', tel:'', author:'橋爪 豪'};
+var SET={facility:'有料老人ホーム ラウレアハレ', tel:'', author:'管理者'};
 (function loadSet(){try{var s=localStorage.getItem(SETTINGS_KEY);if(s){var o=JSON.parse(s);SET.facility=o.facility||SET.facility;SET.tel=o.tel||'';SET.author=o.author||SET.author;}}catch(e){}})();
 
 /* ── ユーティリティ ── */
@@ -840,7 +840,7 @@ function fillSettings(){$('setFacility').value=SET.facility;$('setTel').value=SE
 function saveSettings(){
   SET.facility=$('setFacility').value.trim()||'有料老人ホーム ラウレアハレ';
   SET.tel=$('setTel').value.trim();
-  SET.author=$('setAuthor').value.trim()||'橋爪 豪';
+  SET.author=$('setAuthor').value.trim()||'管理者';
   try{localStorage.setItem(SETTINGS_KEY,JSON.stringify(SET))}catch(e){}
   toast('💾 設定を保存しました');
 }

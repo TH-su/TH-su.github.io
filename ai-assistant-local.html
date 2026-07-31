@@ -209,7 +209,7 @@ input,select,textarea{font-family:inherit; font-size:15px}
     <h3 style="font-size:14px;color:var(--pri-d);margin:0 0 8px">文書の差出人など</h3>
     <div class="fld"><label>施設名</label><input id="setFacility" placeholder="有料老人ホーム ラウレアハレ"></div>
     <div class="fld"><label>連絡先電話</label><input id="setTel" placeholder="例：0977-00-0000"></div>
-    <div class="fld"><label>作成者・管理者名</label><input id="setAuthor" placeholder="橋爪 豪"></div>
+    <div class="fld"><label>作成者・管理者名</label><input id="setAuthor" placeholder="管理者"></div>
     <div class="actions"><button class="btn btn-ok" id="saveProfile">💾 保存</button></div>
   </div>
   <div class="cd">
@@ -260,7 +260,7 @@ var DRAFTS_KEY='su_ai_drafts';        // 文書アプリと共用（同一オリ
 var RAG_KEY='su_ai_rag';
 var SET={
   ollama:'http://127.0.0.1:11434', model:'', temp:'0.4',
-  facility:'有料老人ホーム ラウレアハレ', tel:'', author:'橋爪 豪'
+  facility:'有料老人ホーム ラウレアハレ', tel:'', author:'管理者'
 };
 (function(){try{var s=localStorage.getItem(SET_KEY);if(s){var o=JSON.parse(s);for(var k in o)if(o[k]!=null)SET[k]=o[k];}}catch(e){}})();
 
@@ -358,7 +358,7 @@ var DOCS=[
    {k:'mtg',label:'会議名',type:'text',ph:'例：定例スタッフ会議／運営会議／サービス担当者会議'},
    {k:'date',label:'開催日',type:'date',def:'today'},
    {k:'place',label:'場所',type:'text',ph:'例：1階食堂／会議室'},
-   {k:'members',label:'出席者',type:'text',ph:'例：橋爪、看護2名、介護4名、ケアマネ'},
+   {k:'members',label:'出席者',type:'text',ph:'例：管理者、看護2名、介護4名、ケアマネ'},
    {k:'memo',label:'会議の走り書き（発言・決定事項を箇条書きでOK）',type:'textarea',memo:true,ph:'例：\n・夜間見守り体制 山田さん転倒多い→センサーマット試す\n・インフル予防 来週から面会時マスク徹底\n・忘年会 12/20で調整 田中担当\n・次回1/15'}
  ],
  system:function(d){return 'あなたは会議の書記です。会議の走り書きメモから、正式な議事録に整えます。構成は「会議名／日時／場所／出席者／議題ごとの協議内容／決定事項／宿題（担当者・期限）／次回予定」。発言を簡潔な常体または敬体で整理し、決定事項と宿題は箇条書きで明確にする。メモにない事実・発言・人物・数値は創作しない。誰が何を担当するかメモにあれば必ず残す。'+FACBLOCK();},
@@ -372,7 +372,7 @@ var DOCS=[
    {k:'date',label:'開催日',type:'date',def:'today'},
    {k:'time',label:'開催時刻',type:'text',ph:'例：午後3時00分〜午後4時30分'},
    {k:'place',label:'開催場所',type:'text',ph:'例：当社本店会議室'},
-   {k:'chair',label:'議長',type:'text',ph:'例：代表取締役 橋爪 豪'},
+   {k:'chair',label:'議長',type:'text',ph:'例：管理者'},
    {k:'directors',label:'出席役員（取締役・監査役）',type:'text',ph:'例：取締役3名中3名出席、監査役1名出席。氏名を列挙'},
    {k:'agenda',label:'付議事項（議案・報告事項）',type:'text',ph:'例：第1号議案 〇〇の件／報告事項 業績報告。分かる範囲で'},
    {k:'memo',label:'録音の文字起こしを貼り付け（長文OK）',type:'textarea',memo:true,ph:'文字起こしテキストをそのまま貼り付けてください。話し言葉・「えー」等のフィラーが混ざっていて構いません。AIが議事録の体裁に整理します。'}
@@ -673,7 +673,7 @@ function saveAI(){
 }
 function saveProfile(){
   SET.facility=$('setFacility').value.trim()||'有料老人ホーム ラウレアハレ';
-  SET.tel=$('setTel').value.trim();SET.author=$('setAuthor').value.trim()||'橋爪 豪';
+  SET.tel=$('setTel').value.trim();SET.author=$('setAuthor').value.trim()||'管理者';
   persist();toast('💾 保存しました');
 }
 
